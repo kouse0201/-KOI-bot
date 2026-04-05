@@ -35,7 +35,7 @@ def init_user(user):
     if uid not in data:
         data[uid]={}
 
-    # ★名前を毎回更新（これでLuck/樂反映）
+    # ★名前を毎回更新
     data[uid]["name"] = user.display_name
 
     defaults={
@@ -57,7 +57,15 @@ def yen(n):
     return f"{int(n):,}円"
 
 # ------------------------
-# ★過去データJST補正
+# UTC→JST変換関数（重要）
+# ------------------------
+def to_jst(dt):
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(JST)
+
+# ------------------------
+# ★過去データ補正
 # ------------------------
 def fix_to_jst():
     changed = False
@@ -67,11 +75,9 @@ def fix_to_jst():
         st = u.get("start_time")
         if st:
             try:
-                dt = datetime.fromisoformat(st)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc).astimezone(JST)
-                    u["start_time"] = dt.isoformat()
-                    changed = True
+                dt = to_jst(datetime.fromisoformat(st))
+                u["start_time"] = dt.isoformat()
+                changed = True
             except:
                 pass
 
@@ -80,11 +86,9 @@ def fix_to_jst():
                 t = h.get(key)
                 if t:
                     try:
-                        dt = datetime.fromisoformat(t)
-                        if dt.tzinfo is None:
-                            dt = dt.replace(tzinfo=timezone.utc).astimezone(JST)
-                            h[key] = dt.isoformat()
-                            changed = True
+                        dt = to_jst(datetime.fromisoformat(t))
+                        h[key] = dt.isoformat()
+                        changed = True
                     except:
                         pass
 
@@ -321,7 +325,7 @@ class OrderView(discord.ui.View):
         return True
 
 # ------------------------
-# 勤務UI（修正版）
+# 勤務UI（修正済）
 # ------------------------
 class WorkView(discord.ui.View):
     def __init__(self):
@@ -336,14 +340,7 @@ class WorkView(discord.ui.View):
 
                 if st:
                     try:
-                        t = datetime.fromisoformat(st)
-
-                        if t.tzinfo is None:
-                            t = t.replace(tzinfo=JST)
-                        else:
-                            t = t.astimezone(JST)
-
-                        t = t.strftime("%H:%M")
+                        t = to_jst(datetime.fromisoformat(st)).strftime("%H:%M")
                         working.append(f"{name}({t}~)")
                     except:
                         working.append(f"{name}(??:??~)")
@@ -360,7 +357,7 @@ class WorkView(discord.ui.View):
         init_user(interaction.user)
         uid=str(interaction.user.id)
         data[uid]["is_working"]=True
-        data[uid]["start_time"]=datetime.now(JST).isoformat()
+        data[uid]["start_time"]=datetime.now(timezone.utc).astimezone(JST).isoformat()
         save_data(data)
         await interaction.response.edit_message(embed=self.embed(),view=self)
 
@@ -369,19 +366,15 @@ class WorkView(discord.ui.View):
         init_user(interaction.user)
         uid=str(interaction.user.id)
 
-        start=datetime.fromisoformat(data[uid]["start_time"])
+        start = to_jst(datetime.fromisoformat(data[uid]["start_time"]))
+        now = datetime.now(timezone.utc).astimezone(JST)
 
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=JST)
-        else:
-            start = start.astimezone(JST)
-
-        diff=(datetime.now(JST)-start).total_seconds()
+        diff=(now-start).total_seconds()
 
         data[uid]["total_time"]+=diff
         data[uid]["history"].append({
             "start":data[uid]["start_time"],
-            "end":datetime.now(JST).isoformat()
+            "end":now.isoformat()
         })
 
         data[uid]["is_working"]=False
@@ -406,8 +399,8 @@ class WorkView(discord.ui.View):
         text=f"{h}時間{m}分\n"
         for hst in history[-5:]:
             try:
-                start = datetime.fromisoformat(hst.get("start")).astimezone(JST).strftime("%Y/%m/%d %H:%M")
-                end = datetime.fromisoformat(hst.get("end")).astimezone(JST).strftime("%Y/%m/%d %H:%M")
+                start = to_jst(datetime.fromisoformat(hst.get("start"))).strftime("%Y/%m/%d %H:%M")
+                end = to_jst(datetime.fromisoformat(hst.get("end"))).strftime("%Y/%m/%d %H:%M")
                 text += f"{start} → {end}\n"
             except:
                 text += f"{hst.get('start')} → {hst.get('end')}\n"
@@ -449,8 +442,8 @@ async def time(interaction, member:discord.Member):
         text += "【出退勤履歴】\n"
         for hst in history[-5:]:
             try:
-                start = datetime.fromisoformat(hst.get("start")).astimezone(JST).strftime("%Y/%m/%d %H:%M")
-                end = datetime.fromisoformat(hst.get("end")).astimezone(JST).astimezone(JST).strftime("%Y/%m/%d %H:%M")
+                start = to_jst(datetime.fromisoformat(hst.get("start"))).strftime("%Y/%m/%d %H:%M")
+                end = to_jst(datetime.fromisoformat(hst.get("end"))).strftime("%Y/%m/%d %H:%M")
                 text += f"{start} → {end}\n"
             except:
                 text += f"{hst.get('start','?')} → {hst.get('end','?')}\n"
