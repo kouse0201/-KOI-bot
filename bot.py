@@ -35,6 +35,9 @@ def init_user(user):
     if uid not in data:
         data[uid]={}
 
+    # ★名前を毎回更新（これでLuck/樂反映）
+    data[uid]["name"] = user.display_name
+
     defaults={
         "name":user.display_name,
         "is_working":False,
@@ -184,7 +187,7 @@ def split_menu(page):
     return dict(CATEGORY_LIST[:4] if page==0 else CATEGORY_LIST[4:])
 
 # ------------------------
-# 注文UI（変更なし）
+# 注文UI（そのまま）
 # ------------------------
 class AmountModal(discord.ui.Modal):
     def __init__(self,view,item):
@@ -318,7 +321,7 @@ class OrderView(discord.ui.View):
         return True
 
 # ------------------------
-# 勤務UI（JST＆表示修正済）
+# 勤務UI（修正版）
 # ------------------------
 class WorkView(discord.ui.View):
     def __init__(self):
@@ -328,12 +331,19 @@ class WorkView(discord.ui.View):
         working=[]
         for uid,u in data.items():
             if u.get("is_working"):
-                name = u.get("name")
+                name = u.get("name") or "不明"
                 st = u.get("start_time")
 
                 if st:
                     try:
-                        t = datetime.fromisoformat(st).astimezone(JST).strftime("%H:%M")
+                        t = datetime.fromisoformat(st)
+
+                        if t.tzinfo is None:
+                            t = t.replace(tzinfo=JST)
+                        else:
+                            t = t.astimezone(JST)
+
+                        t = t.strftime("%H:%M")
                         working.append(f"{name}({t}~)")
                     except:
                         working.append(f"{name}(??:??~)")
@@ -360,8 +370,11 @@ class WorkView(discord.ui.View):
         uid=str(interaction.user.id)
 
         start=datetime.fromisoformat(data[uid]["start_time"])
+
         if start.tzinfo is None:
             start = start.replace(tzinfo=JST)
+        else:
+            start = start.astimezone(JST)
 
         diff=(datetime.now(JST)-start).total_seconds()
 
@@ -437,7 +450,7 @@ async def time(interaction, member:discord.Member):
         for hst in history[-5:]:
             try:
                 start = datetime.fromisoformat(hst.get("start")).astimezone(JST).strftime("%Y/%m/%d %H:%M")
-                end = datetime.fromisoformat(hst.get("end")).astimezone(JST).strftime("%Y/%m/%d %H:%M")
+                end = datetime.fromisoformat(hst.get("end")).astimezone(JST).astimezone(JST).strftime("%Y/%m/%d %H:%M")
                 text += f"{start} → {end}\n"
             except:
                 text += f"{hst.get('start','?')} → {hst.get('end','?')}\n"
@@ -508,7 +521,7 @@ async def backup(interaction):
 async def on_ready():
     global work_view
 
-    fix_to_jst()  # ←過去データ補正
+    fix_to_jst()
 
     work_view=WorkView()
     bot.add_view(work_view)
