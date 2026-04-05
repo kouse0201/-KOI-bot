@@ -360,6 +360,9 @@ class WorkView(discord.ui.View):
         uid=str(interaction.user.id)
 
         start=datetime.fromisoformat(data[uid]["start_time"])
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=JST)
+
         diff=(datetime.now(JST)-start).total_seconds()
 
         data[uid]["total_time"]+=diff
