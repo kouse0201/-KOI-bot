@@ -54,6 +54,41 @@ def yen(n):
     return f"{int(n):,}円"
 
 # ------------------------
+# ★過去データJST補正
+# ------------------------
+def fix_to_jst():
+    changed = False
+
+    for uid, u in data.items():
+
+        st = u.get("start_time")
+        if st:
+            try:
+                dt = datetime.fromisoformat(st)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc).astimezone(JST)
+                    u["start_time"] = dt.isoformat()
+                    changed = True
+            except:
+                pass
+
+        for h in u.get("history", []):
+            for key in ["start", "end"]:
+                t = h.get(key)
+                if t:
+                    try:
+                        dt = datetime.fromisoformat(t)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc).astimezone(JST)
+                            h[key] = dt.isoformat()
+                            changed = True
+                    except:
+                        pass
+
+    if changed:
+        save_data(data)
+
+# ------------------------
 # ステータス更新
 # ------------------------
 def get_working_count():
@@ -283,7 +318,7 @@ class OrderView(discord.ui.View):
         return True
 
 # ------------------------
-# 勤務UI（ここだけ修正）
+# 勤務UI（JST＆表示修正済）
 # ------------------------
 class WorkView(discord.ui.View):
     def __init__(self):
@@ -373,7 +408,7 @@ class WorkView(discord.ui.View):
         )
 
 # ------------------------
-# コマンド（変更なし）
+# コマンド（そのまま）
 # ------------------------
 work_view=None
 
@@ -469,10 +504,14 @@ async def backup(interaction):
 @bot.event
 async def on_ready():
     global work_view
+
+    fix_to_jst()  # ←過去データ補正
+
     work_view=WorkView()
     bot.add_view(work_view)
     await tree.sync()
     update_status.start()
+
     print("起動OK")
 
 bot.run(os.getenv("TOKEN"))
