@@ -54,7 +54,7 @@ def yen(n):
     return f"{int(n):,}円"
 
 # ------------------------
-# ★ステータス更新
+# ステータス更新
 # ------------------------
 def get_working_count():
     return sum(1 for u in data.values() if u.get("is_working"))
@@ -298,12 +298,12 @@ class WorkView(discord.ui.View):
                     start_str = start.strftime("%H:%M")
                 except:
                     start_str = "??:??"
-                    
+
                 working.append(f"{u.get('name')}({start_str}~)")
-                
-            return discord.Embed(
-                title="📋勤務パネル",
-                description="\n".join(working) if working else "出勤者なし"
+
+        return discord.Embed(
+            title="📋勤務パネル",
+            description="\n".join(working) if working else "出勤者なし"
         )
 
     @discord.ui.button(label="出勤",style=discord.ButtonStyle.success,custom_id="start")
