@@ -521,6 +521,6 @@ async def on_ready():
     await tree.sync()
     update_status.start()
 
-    print("起動OK")
+    print("起動OK2")
 
 bot.run(os.getenv("TOKEN"))
