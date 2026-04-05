@@ -290,10 +290,20 @@ class WorkView(discord.ui.View):
         super().__init__(timeout=None)
 
     def embed(self):
-        working=[u.get("name") for u in data.values() if u.get("is_working")]
-        return discord.Embed(
-            title="📋勤務パネル",
-            description="\n".join(working) if working else "出勤者なし"
+        working=[]
+        for u in data.values():
+            if u.get("is_working"):
+                try:
+                    start = datetime.fromisoformat(u.get("start_time"))
+                    start_str = start.strftime("%H:%M")
+                except:
+                    start_str = "??:??"
+                    
+                working.append(f"{u.get('name')}({start_str}~)")
+                
+            return discord.Embed(
+                title="📋勤務パネル",
+                description="\n".join(working) if working else "出勤者なし"
         )
 
     @discord.ui.button(label="出勤",style=discord.ButtonStyle.success,custom_id="start")
